@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from Functions import generate_data, kalman_filter
+from Functions import generate_data, kalman_filter, rts_smoothing
+from starman import kalman, KalmanFilter
 
 ### Data generator ###
 
@@ -44,5 +45,16 @@ Sigma = np.zeros((4, 4))
 
 X_kk, Sigma_kk = kalman_filter(X=X, Y=Y, F=F, B=B, u=u, Q=Q, H=H, R=R, Sigma=Sigma, T=T)
 
+print(F)
+print(X_kk)
+
 plt.scatter(X_kk[1:-1, 0], X_kk[1:-1, 1], s=1, color='green')
 plt.show()
+
+smooth_x, smooth_sig, L_smooth = rts_smoothing(X_kk, Sigma_kk, F, Q)
+
+plt.scatter(X_kk[1:-1, 0], X_kk[1:-1, 1], s=1, color='green')
+plt.scatter(smooth_x[1:-1, 0], smooth_x[1:-1, 1], s=1, color='black')
+plt.show()
+
+
