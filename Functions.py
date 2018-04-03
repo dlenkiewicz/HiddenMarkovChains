@@ -15,9 +15,10 @@ def generate_QR_EM(X, Y ,F, H):
     n, dim_x = X.shape
     Q_est = np.zeros((dim_x, dim_x))
     R_est = np.zeros((2, 2))
-    for k in range(n - 2, -1, -1):
-        Q_est += np.outer(X[k], X[k].T) + np.matmul(np.matmul(F, np.outer(X[k - 1], X[k - 1].T)), F.T) - np.matmul(
-            np.outer(X[k], X[k - 1].T), F.T) - np.matmul(F, np.outer(X[k - 1], X[k].T))
+    for k in range(n-1 , -1, -1):
+        if k>0:
+            Q_est += np.outer(X[k], X[k].T) + np.matmul(np.matmul(F, np.outer(X[k - 1], X[k - 1].T)), F.T) - np.matmul(
+                 np.outer(X[k], X[k - 1].T), F.T) - np.matmul(F, np.outer(X[k - 1], X[k].T))
         R_est += np.outer(Y[k], Y[k].T) + np.matmul(np.matmul(H, np.outer(X[k], X[k].T)), H.T) - np.matmul(
             np.outer(Y[k], X[k].T), H.T) - np.matmul(H, np.outer(X[k], Y[k].T))
     Q_est = Q_est / (n - 1)
