@@ -5,24 +5,15 @@ from starman import kalman, KalmanFilter
 
 ### Data generator ###
 
-d = 4
-p = 1
-m = 2
-T = 500
-dt = 0.1
-F = np.eye((d))
-F[0,2] = dt
-F[1,3] = dt
+d = 4; p = 1; m = 2; T = 500; dt = 0.1
+F = np.eye((d)); F[0,2] = dt; F[1,3] = dt
 B = np.array([0,-0.5*dt**2, 0 ,-0.5*dt**2 ])
 u=9.8
 Q = np.eye((d)) * 0.01
 R = np.eye((m)) * 100
-X = np.zeros((T, 4))
-X[0, :] = np.array([10 , 1000, 5, 10 ])
+X = np.zeros((T, 4)); X[0, :] = np.array([10 , 1000, 5, 10 ])
 v = np.random.multivariate_normal(np.array([0,0]), R, T).T
-H = np.zeros((m, d))
-H[0,0] = 1
-H[1,1] = 1
+H = np.zeros((m, d)); H[0,0] = 1; H[1,1] = 1
 
 X, Y = generate_data(X=X, F=F, B=B, u=u, Q=Q, H=H, v=v, T=T)
 plt.scatter(X[0, :], X[1, :], s=1, color='crimson')
@@ -39,10 +30,10 @@ Sigma = np.zeros((4, 4))
 
 X_kk, Sigma_kk = kalman_filter(X=X, Y=Y, F=F, B=B, u=u, Q=Q, H=H, R=R, Sigma=Sigma, T=T)
 
-
 plt.scatter(X_kk[1:-1, 0], X_kk[1:-1, 1], s=1, color='green')
 plt.show()
 
+#rts smoothing#
 smooth_x, smooth_sig, L_smooth = rts_smoothing(X_kk, Sigma_kk, F, Q)
 
 plt.scatter(X_kk[1:-1, 0], X_kk[1:-1, 1], s=1, color='green')
@@ -51,10 +42,9 @@ plt.show()
 
 
 
-## Powtórzenie Kalmana dla Q i R z EM
+## Repeat Kalman for Q and R from EM
 
-X = np.zeros((T, 4))
-X[0, :] = np.array([10 , 1000, 5, 10 ])
+X = np.zeros((T, 4)); X[0, :] = np.array([10 , 1000, 5, 10 ])
 X, Y = generate_data(X=X, F=F, B=B, u=u, Q=Q, H=H, v=v, T=T)
 X=X.T
 Y=Y.T

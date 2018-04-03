@@ -1,5 +1,4 @@
 import numpy as np
-import random
 
 
 def generate_data(X, F, B, u, Q, H, v, T):
@@ -11,7 +10,6 @@ def generate_data(X, F, B, u, Q, H, v, T):
     return X, Y
 
 def generate_QR_EM(X, Y ,F, H):
-    #random.seed(990)
     n, dim_x = X.shape
     Q_est = np.zeros((dim_x, dim_x))
     R_est = np.zeros((2, 2))
