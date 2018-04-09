@@ -31,6 +31,7 @@ def generate_QR_EM(smooth_x,smooth_sig,L_smooth, X_kk, Y ,F, H):
                 XkXk1T[k - 1].T, F.T) - np.matmul(F, XkXk1T[k - 1])
         R_est += np.outer(Y[k], Y[k].T) + np.matmul(np.matmul(H, XkXkT[k]), H.T) - np.matmul(
             np.outer(Y[k], Xk[k].T), H.T) - np.matmul(H, np.outer(Xk[k], Y[k].T))
+
     Q_est = Q_est / (n - 1)
     R_est = R_est / (n)
     return Q_est, R_est
