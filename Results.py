@@ -1,6 +1,7 @@
 import numpy as np
 from pykalman.standard import KalmanFilter
 import matplotlib.pyplot as plt
+from sklearn import metrics
 from Functions import generate_data, kalman_filter, rts_smoothing, generate_QR_EM
 
 ### Data generator ###
@@ -41,11 +42,15 @@ plt.scatter(Y[:, 0], Y[:, 1], s=1, color='blue', label="Y")
 
 X_kk, Sigma_kk = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q, H=H, R=R, Sigma=Sigma, T=T)
 
+print("MSE - Kalman filter:", metrics.mean_squared_error(X_kk[:, 0], X[:, 0]))
+
 plt.scatter(X_kk[:, 0], X_kk[:, 1], s=1, color='green', label="est. X")
 
 ### RTS smoothing ###
 
 smooth_x, smooth_sig, L_smooth = rts_smoothing(X_kk, Sigma_kk, F, Q)
+
+print("MSE - RTS smoothing:", metrics.mean_squared_error(smooth_x[:, 0], X[:, 0]))
 
 plt.scatter(smooth_x[:, 0], smooth_x[:, 1], s=1, color='black', label="smoothed est. X")
 plt.legend(loc='best', ncol=2).get_frame().set_alpha(0.5)
@@ -71,6 +76,9 @@ for j in range(40):
 # print("R EM", R_EM)
 
 X_kk_em, Sigma_kk_em = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q_EM, H=H, R=R_EM, Sigma=Sigma, T=T)
+
+print("MSE - EM - Q:", metrics.mean_squared_error(Q_init, Q_EM))
+print("MSE - EM - R:", metrics.mean_squared_error(R_init, R_EM))
 
 plt.scatter(X_kk[:, 0], X_kk[:, 1], s=1, color='green', label="est. X with theor. Q and R")
 plt.scatter(X_kk_em[:, 0], X_kk_em[:, 1], s=1, color='orange', label="est. X with EM Q and R")
