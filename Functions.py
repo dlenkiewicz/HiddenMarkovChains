@@ -10,27 +10,31 @@ def generate_data(X, F, B, u, Q, H, R, T):
     Y = np.matmul(H, X) + v
     return X, Y
 
-def generate_QR_EM(smooth_x,smooth_sig,L_smooth, X_kk, Y ,F, H):
+def generate_QR_EM2(smooth_x, smooth_sig, L_smooth, X_kk, Y, F, H, B_u):
     n, dim_x = X_kk.shape
     Q_est = np.zeros((dim_x, dim_x))
     R_est = np.zeros((2, 2))
 
-    #Expectation
+	#Expectation
     Xk = smooth_x
-    XkXkT = np.zeros((n, dim_x, dim_x))
-    XkXk1T = np.zeros((n, dim_x, dim_x))
-    for j in range(n - 1, -1, -1):
-        XkXkT[j] = np.outer(smooth_x[j], smooth_x[j].T) + smooth_sig[j]
-        bracket = smooth_sig[j] + np.outer((smooth_x[j] - X_kk[j]), smooth_x[j].T)
-        if j>0:
-            XkXk1T[j-1] = np.outer(X_kk[j - 1], smooth_x[j].T) + np.matmul(L_smooth[j - 1], bracket)
-    #Maximalization
-    for k in range(n - 1, -1, -1):
-        if k > 0:
-            Q_est += XkXkT[k] + np.matmul(np.matmul(F, XkXkT[k - 1]), F.T) - np.matmul(
-                XkXk1T[k - 1].T, F.T) - np.matmul(F, XkXk1T[k - 1])
-        R_est += np.outer(Y[k], Y[k].T) + np.matmul(np.matmul(H, XkXkT[k]), H.T) - np.matmul(
-            np.outer(Y[k], Xk[k].T), H.T) - np.matmul(H, np.outer(Xk[k], Y[k].T))
+    Xk_XkT = []
+    Xk_Xk1T = []
+    for i in range(n):
+        Xk_XkT.append(np.outer(smooth_x[i], smooth_x[i].T) + smooth_sig[i])
+        # print(smooth_x[i])
+        # print(np.outer(smooth_x[i], smooth_x[i].T))
+        # print(smooth_sig[i])
+        if i < n - 1:
+            bracket = smooth_sig[i+1] + np.outer((smooth_x[i+1] - X_kk[i+1]), smooth_x[i+1].T)
+            Xk_Xk1T.append(np.outer(X_kk[i], smooth_x[i+1].T) + np.matmul(L_smooth[i], bracket))
+    for i in range(n):
+        if i >= 1:
+            err = (smooth_x[i] - np.dot(F, smooth_x[i-1]) - B_u)
+            Vt1t_A = np.dot(smooth_sig[i], np.dot(L_smooth[i-1].T, F.T))
+            Q_est += np.outer(err, err) + np.dot(F, np.dot(smooth_sig[i-1], F.T)) + smooth_sig[i] - Vt1t_A - Vt1t_A.T
+        err = (Y[i] - np.dot(H, Xk[i]))
+        R_est += np.outer(err,err) + np.dot(H, np.dot(smooth_sig[i], H.T))
+
     Q_est = Q_est / (n - 1)
     R_est = R_est / (n)
     return Q_est, R_est
@@ -64,3 +68,4 @@ def rts_smoothing(Xs, Sigma, F, Q):
         x[k] += np.dot(L[k], x[k + 1] - np.dot(F, x[k]))
         sig[k] += np.dot(L[k], sig[k + 1] - sig_pred).dot(L[k].T)
     return x, sig, L
+
