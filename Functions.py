@@ -10,35 +10,23 @@ def generate_data(X, F, B, u, Q, H, R, T):
     Y = np.matmul(H, X) + v
     return X, Y
 
-def generate_QR_EM2(smooth_x, smooth_sig, L_smooth, X_kk, Y, F, H, B_u):
+
+def generate_QR_EM(smooth_x, smooth_sig, L_smooth, X_kk, Y, F, H, B_u):
     n, dim_x = X_kk.shape
     Q_est = np.zeros((dim_x, dim_x))
     R_est = np.zeros((2, 2))
 
-	#Expectation
-    Xk = smooth_x
-    Xk_XkT = []
-    Xk_Xk1T = []
-    for i in range(n):
-        Xk_XkT.append(np.outer(smooth_x[i], smooth_x[i].T) + smooth_sig[i])
-        # print(smooth_x[i])
-        # print(np.outer(smooth_x[i], smooth_x[i].T))
-        # print(smooth_sig[i])
-        if i < n - 1:
-            bracket = smooth_sig[i+1] + np.outer((smooth_x[i+1] - X_kk[i+1]), smooth_x[i+1].T)
-            Xk_Xk1T.append(np.outer(X_kk[i], smooth_x[i+1].T) + np.matmul(L_smooth[i], bracket))
     for i in range(n):
         if i >= 1:
             err = (smooth_x[i] - np.dot(F, smooth_x[i-1]) - B_u)
             Vt1t_A = np.dot(smooth_sig[i], np.dot(L_smooth[i-1].T, F.T))
             Q_est += np.outer(err, err) + np.dot(F, np.dot(smooth_sig[i-1], F.T)) + smooth_sig[i] - Vt1t_A - Vt1t_A.T
-        err = (Y[i] - np.dot(H, Xk[i]))
+        err = (Y[i] - np.dot(H, smooth_x[i]))
         R_est += np.outer(err,err) + np.dot(H, np.dot(smooth_sig[i], H.T))
 
     Q_est = Q_est / (n - 1)
     R_est = R_est / (n)
     return Q_est, R_est
-
 
 
 def kalman_filter(X, Y, F, B, u, Q, H, R, Sigma, T):
