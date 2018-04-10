@@ -21,7 +21,6 @@ X=X.T
 Y=Y.T
 
 
-
 ### Kalman filter ###
 
 Sigma = np.zeros((4, 4))
@@ -43,16 +42,17 @@ smooth_x, smooth_sig, L_smooth = rts_smoothing(X_kk, Sigma_kk, F, Q)
 ## Repeat Kalman for Q and R from EM
 Q_init=Q
 R_init=R
+Q_EM=np.random.rand(d,d)
+R_EM=np.random.rand(m,m)
 for j in range(200):
-    Q_EM, R_EM = generate_QR_EM(smooth_x,smooth_sig,L_smooth, X_kk, Y ,F, H)
-    Q=Q_EM
-    R=R_EM
-    X_kk, Sigma_kk = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q, H=H, R=R, Sigma=Sigma, T=T)
-    smooth_x, smooth_sig, L_smooth = rts_smoothing(X_kk, Sigma_kk, F, Q)
+    X_kk, Sigma_kk = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q_EM, H=H, R=R_EM, Sigma=Sigma, T=T)
+    smooth_x, smooth_sig, L_smooth = rts_smoothing(X_kk, Sigma_kk, F, Q_EM)
+    Q_EM, R_EM = generate_QR_EM(smooth_x, smooth_sig, L_smooth, X_kk, Y, F, H)
 print("Qem",Q_EM)
 print("Q", Q_init)
 print("Rem",R_EM)
 print("R", R_init)
+
 
 
 # # data with estimated Q R
@@ -71,3 +71,4 @@ print("R", R_init)
 # #
 # # plt.scatter(X_kk_EM[1:-1, 0], X_kk_EM[1:-1, 1], s=1, color='green')
 # # plt.show()
+
