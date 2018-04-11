@@ -1,5 +1,7 @@
 import numpy as np
-
+import multiprocessing
+from joblib import Parallel, delayed
+from sklearn import metrics
 
 def generate_data(X, F, B, u, Q, H, R, T):
     v = np.random.multivariate_normal(np.array([0, 0]), R, T).T
@@ -57,3 +59,22 @@ def rts_smoothing(Xs, Sigma, F, Q):
         sig[k] += np.dot(L[k], sig[k + 1] - sig_pred).dot(L[k].T)
     return x, sig, L
 
+def count_MSE(method, args, realX, column):
+    if method=='Kalman':
+        X_est, Sig_est = kalman_filter(*args)
+    if method=='RTS':
+        X_est, Sig_est, L_est = rts_smoothing(*args)
+    mse=metrics.mean_squared_error(X_est[:, column], realX[:, column])
+    return mse
+
+# def sym_MSE(method, args, realX, column, iter=1):
+#     num_cores = multiprocessing.cpu_count()
+#     results = Parallel(n_jobs=num_cores - 1)(delayed(count_MSE)(method, args, realX, column) for i in range(iter))
+#     return np.mean(results)
+
+def sym_MSE(method, args, realX, column, iter=1):
+    results=0
+    for k in range(iter):
+        results+=count_MSE(method, args, realX, column)
+    results=results/iter
+    return np.mean(results)
