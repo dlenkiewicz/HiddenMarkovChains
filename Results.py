@@ -2,7 +2,10 @@ import numpy as np
 from pykalman.standard import KalmanFilter
 import matplotlib.pyplot as plt
 from sklearn import metrics
-from Functions import generate_data, kalman_filter, rts_smoothing, generate_QR_EM, sym_MSE, count_MSE, initial_state
+from sklearn.preprocessing import StandardScaler
+from Functions import generate_data, kalman_filter, rts_smoothing, generate_QR_EM, sym_MSE, count_MSE, \
+    SnapshotListHolder, evaluate_stop_condition, initial_state
+
 
 ### Data generator ###
 
@@ -23,9 +26,8 @@ R = np.eye((m)) * 100
 #R = np.eye((m)) * 10
 
 
-## STANY POCZĄTKOWE
-## Iniial states: 'flat' throw with 'none' sigma, flat with 'big' sigma, flat with 'small' sigma, same for 'high' throw
-X0, Sigma= initial_state("high", "big")
+## Iniial states: 'flat' throw with 'none' sigma, 'flat' with 'big' sigma, 'flat' with 'small' sigma, same for 'high' throw
+X0, Sigma= initial_state("flat", "small")
 X = np.zeros((T, 4));
 X[0, :] = X0
 
@@ -46,9 +48,7 @@ plt.scatter(Y[:, 0], Y[:, 1], s=1, color='blue', label="Y")
 
 X_kk, Sigma_kk = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q, H=H, R=R, Sigma=Sigma, T=T)
 
-print("MSE - Kalman filter:", metrics.mean_squared_error(X_kk[:, 1], X[:, 1]))
-
-print("MSE - Kalman filter:",sym_MSE(method='Kalman',args=(X0, Y, F, B, u, Q, H, R, Sigma, T),realX=X,column=1, iter=100))
+print("MSE - Kalman filter:",sym_MSE(method='Kalman',args=(X0, Y, F, B, u, Q, H, R, Sigma, T),realX=X,iter=100))
 
 plt.scatter(X_kk[:, 0], X_kk[:, 1], s=1, color='green', label="est. X")
 
@@ -59,9 +59,7 @@ plt.scatter(X_kk[:, 0], X_kk[:, 1], s=1, color='green', label="est. X")
 
 smooth_x, smooth_sig, L_smooth = rts_smoothing(X_kk, Sigma_kk, F, Q)
 
-print("MSE - RTS smoothing:", metrics.mean_squared_error(smooth_x[:, 1], X[:, 1]))
-
-print("MSE - RTS smoothing:",sym_MSE(method='RTS',args=(X_kk, Sigma_kk, F, Q),realX=X,column=1, iter=100))
+print("MSE - RTS smoothing:",sym_MSE(method='RTS',args=(X_kk, Sigma_kk, F, Q),realX=X,iter=100))
 
 plt.scatter(smooth_x[:, 0], smooth_x[:, 1], s=1, color='black', label="smoothed est. X")
 plt.legend(loc='best', ncol=2, markerscale=5).get_frame().set_alpha(0.5)
@@ -79,23 +77,30 @@ R_EM = np.eye((m))
 X_kk_em = X_kk
 Sigma_kk_em = Sigma_kk
 
-for j in range(40):
+Q_snapshot = SnapshotListHolder(Q_EM)
+R_snapshot = SnapshotListHolder(R_EM)
+current_iter = 0
+
+while evaluate_stop_condition(Q_EM, Q_snapshot, current_iter, 50, threshold=0.001) and \
+        evaluate_stop_condition(R_EM, R_snapshot, current_iter, 50, threshold=0.001):
     Q = Q_EM
     R = R_EM
     X_kk_em, Sigma_kk_em = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q, H=H, R=R, Sigma=Sigma, T=T)
     smooth_x, smooth_sig, L_smooth = rts_smoothing(X_kk_em, Sigma_kk_em, F, Q)
     Q_EM, R_EM = generate_QR_EM(smooth_x, smooth_sig, L_smooth, X_kk, Y, F, H, B*u)
+    current_iter += 1
 
 # print("Q EM", Q_EM)
 # print("R EM", R_EM)
 
 X_kk_em, Sigma_kk_em = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q_EM, H=H, R=R_EM, Sigma=Sigma, T=T)
 
-print("MSE - EM - Q:", metrics.mean_squared_error(Q_init, Q_EM))
-print("MSE - EM - R:", metrics.mean_squared_error(R_init, R_EM))
+print("EM converged in", current_iter, "steps.")
 
-print("MSE - Kalman with EM Q and R:", metrics.mean_squared_error(X[:,1], X_kk_em[:,1]))
-print("MSE - Kalman with EM Q and R:",sym_MSE(method='Kalman',args=(X0, Y, F, B, u, Q_EM, H, R_EM, Sigma, T),realX=X,column=1, iter=100))
+print("MSE - EM - Q:", metrics.mean_squared_error(StandardScaler().fit_transform(Q_init), StandardScaler().fit_transform(Q_EM)))
+print("MSE - EM - R:", metrics.mean_squared_error(StandardScaler().fit_transform(R_init), StandardScaler().fit_transform(R_EM)))
+
+print("MSE - Kalman with EM Q and R:",sym_MSE(method='Kalman',args=(X0, Y, F, B, u, Q_EM, H, R_EM, Sigma, T),realX=X, iter=100))
 
 plt.scatter(X_kk[:, 0], X_kk[:, 1], s=1, color='green', label="est. X with theor. Q and R")
 plt.scatter(X_kk_em[:, 0], X_kk_em[:, 1], s=1, color='orange', label="est. X with EM Q and R")
