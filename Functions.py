@@ -1,6 +1,4 @@
 import numpy as np
-import multiprocessing
-from joblib import Parallel, delayed
 from sklearn.preprocessing import StandardScaler
 from sklearn import metrics
 
@@ -80,6 +78,7 @@ def rts_smoothing(Xs, Sigma, F, Q):
         sig[k] += np.dot(L[k], sig[k + 1] - sig_pred).dot(L[k].T)
     return x, sig, L
 
+
 def count_MSE(method, args, realX):
     if method=='Kalman':
         X_est, Sig_est = kalman_filter(*args)
@@ -89,19 +88,14 @@ def count_MSE(method, args, realX):
                                    StandardScaler().fit_transform(realX))
     return mse
 
+
 def sym_MSE(method, args, realX, iter=1):
     results=0
     for k in range(iter):
         results+=count_MSE(method, args, realX)
     results=results/iter
-    return np.mean(results)
-
-# def sym_MSE(method, args, realX, column, iter=1):
-#     num_cores = multiprocessing.cpu_count()
-#     results = Parallel(n_jobs=num_cores - 1)(delayed(count_MSE)(method, args, realX, column) for i in range(iter))
-#     return np.mean(results)
-
     return results
+
 
 def initial_state(throw, sigma):
     if throw=='flat':

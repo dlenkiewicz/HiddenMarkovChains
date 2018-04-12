@@ -1,5 +1,4 @@
 import numpy as np
-from pykalman.standard import KalmanFilter
 import matplotlib.pyplot as plt
 from sklearn import metrics
 from sklearn.preprocessing import StandardScaler
@@ -7,7 +6,7 @@ from Functions import generate_data, kalman_filter, rts_smoothing, generate_QR_E
     SnapshotListHolder, evaluate_stop_condition, initial_state
 
 
-### Data generator ###
+### Initial parameters ###
 
 d = 4
 p = 1
@@ -20,20 +19,30 @@ F[1, 3] = dt
 
 B = np.array([0, -0.5 * dt ** 2, 0, -0.5 * dt ** 2])
 u = 9.8
+
+H = np.zeros((m, d))
+H[0, 0] = 1
+H[1, 1] = 1
+
 Q = np.eye((d)) * 0.01
-## Rozważane R
+
+## Tested parameters ##
+
+## Tested R marix (2 variants) ##
+
 R = np.eye((m)) * 100
 #R = np.eye((m)) * 10
 
 
-## Iniial states: 'flat' throw with 'none' sigma, 'flat' with 'big' sigma, 'flat' with 'small' sigma, same for 'high' throw
-X0, Sigma= initial_state("flat", "small")
-X = np.zeros((T, 4));
-X[0, :] = X0
+## Tested Iniial states (6 variants): 'flat' throw with 'none' sigma, 'flat' throw with 'big' sigma, 'flat' throw with 'small' sigma
+### 'high' throw with 'none' sigma, 'high' throw with 'big' sigma, 'high' throw with 'small' sigma
 
-H = np.zeros((m, d));
-H[0, 0] = 1;
-H[1, 1] = 1
+X0, Sigma = initial_state("flat", "small")
+
+
+## Data generating ##
+X = np.zeros((T, 4))
+X[0, :] = X0
 
 X, Y = generate_data(X=X, F=F, B=B, u=u, Q=Q, H=H, R=R, T=T)
 X = X.T
@@ -47,8 +56,8 @@ plt.scatter(Y[:, 0], Y[:, 1], s=1, color='blue', label="Y")
 ### Kalman filter ###
 
 X_kk, Sigma_kk = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q, H=H, R=R, Sigma=Sigma, T=T)
-
-print("MSE - Kalman filter:",sym_MSE(method='Kalman',args=(X0, Y, F, B, u, Q, H, R, Sigma, T),realX=X,iter=100))
+MSE_K = sym_MSE(method='Kalman',args=(X0, Y, F, B, u, Q, H, R, Sigma, T),realX=X,iter=100)
+print("MSE - Kalman filter:", MSE_K)
 
 plt.scatter(X_kk[:, 0], X_kk[:, 1], s=1, color='green', label="est. X")
 
@@ -58,8 +67,8 @@ plt.scatter(X_kk[:, 0], X_kk[:, 1], s=1, color='green', label="est. X")
 ### RTS smoothing ###
 
 smooth_x, smooth_sig, L_smooth = rts_smoothing(X_kk, Sigma_kk, F, Q)
-
-print("MSE - RTS smoothing:",sym_MSE(method='RTS',args=(X_kk, Sigma_kk, F, Q),realX=X,iter=100))
+MSE_RTS=sym_MSE(method='RTS',args=(X_kk, Sigma_kk, F, Q),realX=X,iter=100)
+print("MSE - RTS smoothing:",MSE_RTS)
 
 plt.scatter(smooth_x[:, 0], smooth_x[:, 1], s=1, color='black', label="smoothed est. X")
 plt.legend(loc='best', ncol=2, markerscale=5).get_frame().set_alpha(0.5)
@@ -90,32 +99,21 @@ while evaluate_stop_condition(Q_EM, Q_snapshot, current_iter, 50, threshold=0.00
     Q_EM, R_EM = generate_QR_EM(smooth_x, smooth_sig, L_smooth, X_kk, Y, F, H, B*u)
     current_iter += 1
 
-# print("Q EM", Q_EM)
-# print("R EM", R_EM)
 
 X_kk_em, Sigma_kk_em = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q_EM, H=H, R=R_EM, Sigma=Sigma, T=T)
 
 print("EM converged in", current_iter, "steps.")
 
-print("MSE - EM - Q:", metrics.mean_squared_error(StandardScaler().fit_transform(Q_init), StandardScaler().fit_transform(Q_EM)))
-print("MSE - EM - R:", metrics.mean_squared_error(StandardScaler().fit_transform(R_init), StandardScaler().fit_transform(R_EM)))
+MSE_Q=metrics.mean_squared_error(StandardScaler().fit_transform(Q_init), StandardScaler().fit_transform(Q_EM))
+MSE_R=metrics.mean_squared_error(StandardScaler().fit_transform(R_init), StandardScaler().fit_transform(R_EM))
+print("MSE - EM - Q:", MSE_Q)
+print("MSE - EM - R:", MSE_R)
 
-print("MSE - Kalman with EM Q and R:",sym_MSE(method='Kalman',args=(X0, Y, F, B, u, Q_EM, H, R_EM, Sigma, T),realX=X, iter=100))
+## Kalman filter on X with EM Q and R ##
+MSE_K_EM=sym_MSE(method='Kalman',args=(X0, Y, F, B, u, Q_EM, H, R_EM, Sigma, T),realX=X, iter=100)
+print("MSE - Kalman with EM Q and R:",MSE_K_EM)
 
 plt.scatter(X_kk[:, 0], X_kk[:, 1], s=1, color='green', label="est. X with theor. Q and R")
 plt.scatter(X_kk_em[:, 0], X_kk_em[:, 1], s=1, color='orange', label="est. X with EM Q and R")
 plt.legend(loc='best', ncol=2,markerscale=5).get_frame().set_alpha(0.5)
 plt.show()
-
-
-### implemented EM ###
-
-# superKalman = KalmanFilter(transition_matrices=F, observation_matrices=H, transition_offsets=B * u,
-#                            initial_state_mean=X0, initial_state_covariance=Sigma,
-#                            em_vars=['transition_covariance', 'observation_covariance'])
-# superKalman.em(X=Y, n_iter=40)
-# print("implemented Q:", superKalman.transition_covariance)
-# print("implemented R:", superKalman.observation_covariance)
-
-
-
