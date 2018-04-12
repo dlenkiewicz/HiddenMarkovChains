@@ -77,4 +77,20 @@ def sym_MSE(method, args, realX, column, iter=1):
     for k in range(iter):
         results+=count_MSE(method, args, realX, column)
     results=results/iter
-    return np.mean(results)
+    return results
+
+def initial_state(throw, sigma):
+    if throw=='flat':
+        mu = [2, 1000, 10, 5]
+    elif throw=='high':
+        mu = [10, 10, 5, 10]
+    if sigma is None:
+        Sigma = np.zeros((4, 4))
+    elif sigma=='small':
+        Sigma = np.zeros((4, 4))+0.2 + np.eye(4)*0.1
+    elif sigma=='big':
+        Sigma = np.zeros((4, 4)) + 3 + np.eye(4) * 2
+
+    initstate=np.random.multivariate_normal(mu, Sigma)
+
+    return initstate, Sigma
