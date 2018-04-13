@@ -25,7 +25,8 @@ R = np.eye((m)) * 100
 #R = np.eye((m)) * 10
 
 
-### Iniial states: 'flat' throw with 'none' sigma, 'flat' with 'big' sigma, 'flat' with 'small' sigma, same for 'high' throw ###
+### Initial states: 'flat' throw with 'none' sigma, 'flat' with 'big' sigma, 'flat' with 'small' sigma, same for 'high' throw ###
+
 X0, Sigma= initial_state("flat", "small")
 X = np.zeros((T, 4));
 X[0, :] = X0
