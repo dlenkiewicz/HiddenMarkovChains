@@ -1,6 +1,4 @@
 import numpy as np
-import multiprocessing
-from joblib import Parallel, delayed
 from sklearn.preprocessing import StandardScaler
 from sklearn import metrics
 
@@ -13,43 +11,22 @@ def generate_data(X, F, B, u, Q, H, R, T):
     Y = np.matmul(H, X) + v
     return X, Y
 
-class SnapshotListHolder:
-    def __init__(self, snapshot):
-        self.__snapshot = list(snapshot)
 
-    def take_snapshot(self, snapshot):
-        self.__snapshot = list(snapshot)
+def initial_state(throw, sigma):
+    if throw=='flat':
+        mu = [2, 1000, 10, 5]
+    elif throw=='high':
+        mu = [10, 10, 5, 10]
+    if sigma is None:
+        Sigma = np.zeros((4, 4))
+    elif sigma=='small':
+        Sigma = np.zeros((4, 4))+0.2 + np.eye(4)*0.1
+    elif sigma=='big':
+        Sigma = np.zeros((4, 4)) + 3 + np.eye(4) * 2
 
-    def get_snapshot(self):
-        return self.__snapshot
+    initstate=np.random.multivariate_normal(mu, Sigma)
 
-def evaluate_stop_condition(current_param, param_snapshot, current_iter, max_iter, threshold=0.0001):
-    if current_iter >= max_iter:
-        return False
-    elif current_iter == 0:
-        return True
-    elif metrics.mean_squared_error(current_param, param_snapshot.get_snapshot()) > threshold:
-        param_snapshot.take_snapshot(current_param)
-        return True
-    else:
-        return False
-
-def generate_QR_EM(smooth_x, smooth_sig, L_smooth, X_kk, Y, F, H, B_u):
-    n, dim_x = X_kk.shape
-    Q_est = np.zeros((dim_x, dim_x))
-    R_est = np.zeros((2, 2))
-
-    for i in range(n):
-        if i >= 1:
-            err = (smooth_x[i] - np.dot(F, smooth_x[i-1]) - B_u)
-            Vt1t_A = np.dot(smooth_sig[i], np.dot(L_smooth[i-1].T, F.T))
-            Q_est += np.outer(err, err) + np.dot(F, np.dot(smooth_sig[i-1], F.T)) + smooth_sig[i] - Vt1t_A - Vt1t_A.T
-        err = (Y[i] - np.dot(H, smooth_x[i]))
-        R_est += np.outer(err,err) + np.dot(H, np.dot(smooth_sig[i], H.T))
-
-    Q_est = Q_est / (n - 1)
-    R_est = R_est / (n)
-    return Q_est, R_est
+    return initstate, Sigma
 
 
 def kalman_filter(X, Y, F, B, u, Q, H, R, Sigma, T):
@@ -80,6 +57,47 @@ def rts_smoothing(Xs, Sigma, F, Q):
         sig[k] += np.dot(L[k], sig[k + 1] - sig_pred).dot(L[k].T)
     return x, sig, L
 
+
+def generate_QR_EM(smooth_x, smooth_sig, L_smooth, X_kk, Y, F, H, B_u):
+    n, dim_x = X_kk.shape
+    Q_est = np.zeros((dim_x, dim_x))
+    R_est = np.zeros((2, 2))
+
+    for i in range(n):
+        if i >= 1:
+            err = (smooth_x[i] - np.dot(F, smooth_x[i-1]) - B_u)
+            Vt1t_A = np.dot(smooth_sig[i], np.dot(L_smooth[i-1].T, F.T))
+            Q_est += np.outer(err, err) + np.dot(F, np.dot(smooth_sig[i-1], F.T)) + smooth_sig[i] - Vt1t_A - Vt1t_A.T
+        err = (Y[i] - np.dot(H, smooth_x[i]))
+        R_est += np.outer(err,err) + np.dot(H, np.dot(smooth_sig[i], H.T))
+
+    Q_est = Q_est / (n - 1)
+    R_est = R_est / (n)
+    return Q_est, R_est
+
+
+class SnapshotListHolder:
+    def __init__(self, snapshot):
+        self.__snapshot = list(snapshot)
+
+    def take_snapshot(self, snapshot):
+        self.__snapshot = list(snapshot)
+
+    def get_snapshot(self):
+        return self.__snapshot
+
+def evaluate_stop_condition(current_param, param_snapshot, current_iter, max_iter, threshold=0.0001):
+    if current_iter >= max_iter:
+        return False
+    elif current_iter == 0:
+        return True
+    elif metrics.mean_squared_error(current_param, param_snapshot.get_snapshot()) > threshold:
+        param_snapshot.take_snapshot(current_param)
+        return True
+    else:
+        return False
+
+
 def count_MSE(method, args, realX):
     if method=='Kalman':
         X_est, Sig_est = kalman_filter(*args)
@@ -89,32 +107,10 @@ def count_MSE(method, args, realX):
                                    StandardScaler().fit_transform(realX))
     return mse
 
+
 def sym_MSE(method, args, realX, iter=1):
     results=0
     for k in range(iter):
         results+=count_MSE(method, args, realX)
     results=results/iter
     return np.mean(results)
-
-# def sym_MSE(method, args, realX, column, iter=1):
-#     num_cores = multiprocessing.cpu_count()
-#     results = Parallel(n_jobs=num_cores - 1)(delayed(count_MSE)(method, args, realX, column) for i in range(iter))
-#     return np.mean(results)
-
-    return results
-
-def initial_state(throw, sigma):
-    if throw=='flat':
-        mu = [2, 1000, 10, 5]
-    elif throw=='high':
-        mu = [10, 10, 5, 10]
-    if sigma is None:
-        Sigma = np.zeros((4, 4))
-    elif sigma=='small':
-        Sigma = np.zeros((4, 4))+0.2 + np.eye(4)*0.1
-    elif sigma=='big':
-        Sigma = np.zeros((4, 4)) + 3 + np.eye(4) * 2
-
-    initstate=np.random.multivariate_normal(mu, Sigma)
-
-    return initstate, Sigma

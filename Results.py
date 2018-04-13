@@ -1,5 +1,4 @@
 import numpy as np
-from pykalman.standard import KalmanFilter
 import matplotlib.pyplot as plt
 from sklearn import metrics
 from sklearn.preprocessing import StandardScaler
@@ -21,12 +20,12 @@ F[1, 3] = dt
 B = np.array([0, -0.5 * dt ** 2, 0, -0.5 * dt ** 2])
 u = 9.8
 Q = np.eye((d)) * 0.01
-## Rozważane R
+
 R = np.eye((m)) * 100
 #R = np.eye((m)) * 10
 
 
-## Iniial states: 'flat' throw with 'none' sigma, 'flat' with 'big' sigma, 'flat' with 'small' sigma, same for 'high' throw
+### Iniial states: 'flat' throw with 'none' sigma, 'flat' with 'big' sigma, 'flat' with 'small' sigma, same for 'high' throw ###
 X0, Sigma= initial_state("flat", "small")
 X = np.zeros((T, 4));
 X[0, :] = X0
@@ -43,7 +42,6 @@ plt.scatter(X[:, 0], X[:, 1], s=1, color='crimson', label="X")
 plt.scatter(Y[:, 0], Y[:, 1], s=1, color='blue', label="Y")
 
 
-
 ### Kalman filter ###
 
 X_kk, Sigma_kk = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q, H=H, R=R, Sigma=Sigma, T=T)
@@ -51,8 +49,6 @@ X_kk, Sigma_kk = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q, H=H, R=R, Sigma=Si
 print("MSE - Kalman filter:",sym_MSE(method='Kalman',args=(X0, Y, F, B, u, Q, H, R, Sigma, T),realX=X,iter=100))
 
 plt.scatter(X_kk[:, 0], X_kk[:, 1], s=1, color='green', label="est. X")
-
-
 
 
 ### RTS smoothing ###
@@ -64,8 +60,6 @@ print("MSE - RTS smoothing:",sym_MSE(method='RTS',args=(X_kk, Sigma_kk, F, Q),re
 plt.scatter(smooth_x[:, 0], smooth_x[:, 1], s=1, color='black', label="smoothed est. X")
 plt.legend(loc='best', ncol=2, markerscale=5).get_frame().set_alpha(0.5)
 plt.show()
-
-
 
 
 ### EM ###
@@ -90,9 +84,6 @@ while evaluate_stop_condition(Q_EM, Q_snapshot, current_iter, 50, threshold=0.00
     Q_EM, R_EM = generate_QR_EM(smooth_x, smooth_sig, L_smooth, X_kk, Y, F, H, B*u)
     current_iter += 1
 
-# print("Q EM", Q_EM)
-# print("R EM", R_EM)
-
 X_kk_em, Sigma_kk_em = kalman_filter(X=X0, Y=Y, F=F, B=B, u=u, Q=Q_EM, H=H, R=R_EM, Sigma=Sigma, T=T)
 
 print("EM converged in", current_iter, "steps.")
@@ -106,16 +97,3 @@ plt.scatter(X_kk[:, 0], X_kk[:, 1], s=1, color='green', label="est. X with theor
 plt.scatter(X_kk_em[:, 0], X_kk_em[:, 1], s=1, color='orange', label="est. X with EM Q and R")
 plt.legend(loc='best', ncol=2,markerscale=5).get_frame().set_alpha(0.5)
 plt.show()
-
-
-### implemented EM ###
-
-# superKalman = KalmanFilter(transition_matrices=F, observation_matrices=H, transition_offsets=B * u,
-#                            initial_state_mean=X0, initial_state_covariance=Sigma,
-#                            em_vars=['transition_covariance', 'observation_covariance'])
-# superKalman.em(X=Y, n_iter=40)
-# print("implemented Q:", superKalman.transition_covariance)
-# print("implemented R:", superKalman.observation_covariance)
-
-
-
