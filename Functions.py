@@ -106,11 +106,3 @@ def count_MSE(method, args, realX):
     mse=metrics.mean_squared_error(StandardScaler().fit_transform(X_est),
                                    StandardScaler().fit_transform(realX))
     return mse
-
-
-def sym_MSE(method, args, realX, iter=1):
-    results=0
-    for k in range(iter):
-        results+=count_MSE(method, args, realX)
-    results=results/iter
-    return np.mean(results)
